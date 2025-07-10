@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SiriWave Audio Visualizer</title>
+    <script src="https://unpkg.com/siriwave/dist/siriwave.umd.min.js"></script>
+    <style>
+        :root {
+            --primary-bg: #FFF;
+            --control-bg: white;
+            --text-color: #333;
+            --border-color: #ccc;
+            --border-radius: 5px;
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            gap: 32px;
+            margin: 0;
+            background-color: var(--primary-bg);
+            font-family: var(--font-family);
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 32px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1000px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-group label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-color);
+            text-align: center;
+        }
+        
+        .color-input {
+            width: 50px;
+            height: 30px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+        }
+        
+        .opacity-input,
+        .style-select,
+        .blend-select {
+            padding: 5px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: var(--control-bg);
+            font-size: 12px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .visualizer-container {
+            position: relative;
+            display: inline-block;
+            overflow: hidden;
+            transition: clip-path 0.3s ease;
+        }
+        
+        .visualizer-container.circle {
+            clip-path: circle(50% at 50% 50%);
+        }
+        
+        #siriwave-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            overflow: hidden;
+            pointer-events: none;
+            mix-blend-mode: soft-light;
+        }
+        
+        #siriwave-container canvas {
+            position: absolute;
+            bottom: -50%;
+            left: 0;
+            transform: translateY(4px);
+        }
+        
+        #template-image {
+            display: block;
+        }
+        
+        #template-image.circle {
+            object-fit: cover;
+            aspect-ratio: 1;
+            width: 400px;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="visualizer-container">
+        <img id="template-image" src="Template.png" width="800" alt="Visualization template">
+        <div id="siriwave-container"></div>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Main Layer</label>
+            <input type="color" id="color1" class="color-input" value="#919191">
+            <input type="range" id="opacity1" class="opacity-input" min="0" max="1" step="0.1" value="1">
+            <label>Opacity: <span id="opacity1-value">1.0</span></label>
+        </div>
+        
+        <div class="control-group">
+            <label>Mid Layer</label>
+            <input type="color" id="color2" class="color-input" value="#d1d1d1">
+            <input type="range" id="opacity2" class="opacity-input" min="0" max="1" step="0.1" value="0.8">
+            <label>Opacity: <span id="opacity2-value">0.8</span></label>
+        </div>
+        
+        <div class="control-group">
+            <label>Base Layer</label>
+            <input type="color" id="color3" class="color-input" value="#383838">
+            <input type="range" id="opacity3" class="opacity-input" min="0" max="1" step="0.1" value="0.6">
+            <label>Opacity: <span id="opacity3-value">0.6</span></label>
+        </div>
+
+        <div class="control-group">
+            <label>Canvas Blend Mode</label>
+            <select id="canvas-blend-select" class="blend-select">
+                <option value="source-over">Source Over</option>
+                <option value="lighter" selected>Lighter</option>
+                <option value="multiply">Multiply</option>
+                <option value="screen">Screen</option>
+                <option value="overlay">Overlay</option>
+                <option value="darken">Darken</option>
+                <option value="lighten">Lighten</option>
+                <option value="color-dodge">Color Dodge</option>
+                <option value="color-burn">Color Burn</option>
+                <option value="hard-light">Hard Light</option>
+                <option value="soft-light">Soft Light</option>
+                <option value="difference">Difference</option>
+                <option value="exclusion">Exclusion</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>Waves Blend Mode</label>
+            <select id="bg-blend-select" class="blend-select">
+                <option value="normal">Normal</option>
+                <option value="multiply">Multiply</option>
+                <option value="screen" selected>Screen</option>
+                <option value="overlay">Overlay</option>
+                <option value="darken">Darken</option>
+                <option value="lighten">Lighten</option>
+                <option value="color-dodge">Color Dodge</option>
+                <option value="color-burn">Color Burn</option>
+                <option value="hard-light">Hard Light</option>
+                <option value="soft-light">Soft Light</option>
+                <option value="difference">Difference</option>
+                <option value="exclusion">Exclusion</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>Image Style</label>
+            <select id="image-style-select" class="blend-select">
+                <option value="rectangle" selected>Rectangle</option>
+                <option value="circle">Circle</option>
+            </select>
+        </div>
+    </div>
+
+    <script>
+        let siriWave = null;
+        let audioContext = null;
+        let analyser = null;
+        let animationId = null;
+
+        const elements = {
+            templateImage: document.getElementById('template-image'),
+            siriWaveContainer: document.getElementById('siriwave-container'),
+            canvasBlendSelect: document.getElementById('canvas-blend-select'),
+            bgBlendSelect: document.getElementById('bg-blend-select'),
+            imageStyleSelect: document.getElementById('image-style-select'),
+            color1: document.getElementById('color1'),
+            color2: document.getElementById('color2'),
+            color3: document.getElementById('color3'),
+            opacity1: document.getElementById('opacity1'),
+            opacity2: document.getElementById('opacity2'),
+            opacity3: document.getElementById('opacity3'),
+            opacity1Value: document.getElementById('opacity1-value'),
+            opacity2Value: document.getElementById('opacity2-value'),
+            opacity3Value: document.getElementById('opacity3-value')
+        };
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function getColorString(hex, opacity = 1) {
+            const rgb = hexToRgb(hex);
+            return opacity < 1 
+                ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`
+                : `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+        }
+
+        function getCurveDefinition() {
+            return [
+                { color: "255,255,255", supportLine: true, opacity: 0 },
+                { 
+                    color: getColorString(elements.color1.value),
+                    opacity: parseFloat(elements.opacity1.value)
+                },
+                { 
+                    color: getColorString(elements.color2.value),
+                    opacity: parseFloat(elements.opacity2.value)
+                },
+                { 
+                    color: getColorString(elements.color3.value),
+                    opacity: parseFloat(elements.opacity3.value)
+                }
+            ];
+        }
+
+        function applyStyles() {
+            const backgroundBlendMode = elements.bgBlendSelect.value;
+            const imageStyle = elements.imageStyleSelect.value;
+
+            elements.siriWaveContainer.style.mixBlendMode = backgroundBlendMode;
+
+            elements.templateImage.classList.toggle('circle', imageStyle === 'circle');
+            elements.templateImage.parentElement.classList.toggle('circle', imageStyle === 'circle');
+            
+            const container = elements.templateImage.parentElement;
+            if (imageStyle === 'circle') {
+                container.style.width = '400px';
+                container.style.height = '400px';
+            } else {
+                container.style.width = '';
+                container.style.height = '';
+            }
+        }
+
+        function calculateDimensions() {
+            const containerWidth = elements.templateImage.offsetWidth;
+            const containerImageHeight = elements.templateImage.offsetHeight;
+            const imageStyle = elements.imageStyleSelect.value;
+            
+            const referenceDimension = imageStyle === 'circle' 
+                ? Math.min(containerWidth, containerImageHeight)
+                : containerImageHeight;
+            
+            const containerMaxHeight = referenceDimension * 4;
+            
+            // Wave extension based on image style
+            const extension = imageStyle === 'circle' ? 0.6 : 0.3;
+            
+            const waveWidth = containerWidth * (1 + extension * 2);
+            const leftOffset = -containerWidth * extension;
+            
+            return {
+                containerWidth,
+                containerMaxHeight,
+                waveWidth,
+                leftOffset
+            };
+        }
+
+        function initializeSiriWave() {
+            const { containerWidth, containerMaxHeight, waveWidth, leftOffset } = calculateDimensions();
+            
+            Object.assign(elements.siriWaveContainer.style, {
+                width: `${waveWidth}px`,
+                height: `${containerMaxHeight}px`,
+                left: `${leftOffset}px`
+            });
+
+            if (siriWave) {
+                siriWave.dispose();
+            }
+
+            const config = {
+                container: elements.siriWaveContainer,
+                width: waveWidth,
+                height: containerMaxHeight,
+                style: 'ios9',
+                amplitude: 3,
+                speed: 0.2,
+                autostart: false,
+                cover: true,
+                curveDefinition: getCurveDefinition(),
+                globalCompositeOperation: elements.canvasBlendSelect.value
+            };
+
+            siriWave = new SiriWave(config);
+        }
+
+        function updateWave() {
+            // Stop current wave to prevent deformation during transition
+            if (siriWave) {
+                siriWave.stop();
+            }
+            
+            // Apply styles first, then wait for DOM update before recalculating
+            applyStyles();
+            
+            setTimeout(() => {
+                initializeSiriWave();
+                if (audioContext?.state === 'running') {
+                    siriWave.start();
+                }
+            }, 100);
+        }
+
+        function setupEventListeners() {
+            elements.templateImage.addEventListener('load', initializeSiriWave);
+            window.addEventListener('resize', initializeSiriWave);
+
+            [elements.canvasBlendSelect, elements.bgBlendSelect, elements.imageStyleSelect].forEach(element => {
+                element.addEventListener('change', updateWave);
+            });
+
+            [elements.color1, elements.color2, elements.color3].forEach(input => {
+                input.addEventListener('change', updateWave);
+            });
+
+            elements.opacity1.addEventListener('input', (e) => {
+                elements.opacity1Value.textContent = parseFloat(e.target.value).toFixed(1);
+                updateWave();
+            });
+
+            elements.opacity2.addEventListener('input', (e) => {
+                elements.opacity2Value.textContent = parseFloat(e.target.value).toFixed(1);
+                updateWave();
+            });
+
+            elements.opacity3.addEventListener('input', (e) => {
+                elements.opacity3Value.textContent = parseFloat(e.target.value).toFixed(1);
+                updateWave();
+            });
+        }
+
+        async function startAudioVisualization() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: false
+                });
+
+                audioContext = new AudioContext();
+                analyser = audioContext.createAnalyser();
+                const mediaStreamSource = audioContext.createMediaStreamSource(stream);
+
+                mediaStreamSource.connect(analyser);
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.8;
+
+                siriWave.start();
+                updateWaveAmplitude();
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                siriWave.start();
+            }
+        }
+
+        function updateWaveAmplitude() {
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength;
+            const normalizedAmplitude = Math.max(0.1, average / 255 * 3);
+            
+            siriWave.setAmplitude(normalizedAmplitude);
+            animationId = requestAnimationFrame(updateWaveAmplitude);
+        }
+
+        function cleanup() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            if (siriWave) {
+                siriWave.dispose();
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+        }
+
+        function initialize() {
+            setupEventListeners();
+            applyStyles();
+            initializeSiriWave();
+            
+            setTimeout(() => {
+                startAudioVisualization();
+            }, 500);
+        }
+
+        window.addEventListener('load', initialize);
+        window.addEventListener('beforeunload', cleanup);
+    </script>
+</body>
+</html> 

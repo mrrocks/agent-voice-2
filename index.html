@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>
+        
+    </title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        
+        .visualizer-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        #visualizer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        
+        #template-image {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    
+    <div class="visualizer-container">
+        <img id="template-image" src="Template.png" width="800px">
+        <canvas id="visualizer"></canvas>
+    </div>
+
+    <script type="text/javascript">
+        let visualizer = document.getElementById("visualizer");
+        let templateImage = document.getElementById("template-image");
+        
+        const BAR_WIDTH = 4;
+        const BAR_GAP = 2;
+        const MAX_HEIGHT_PERCENTAGE = 0.4;
+        const BAR_COLOR = 'rgba(255, 255, 255, 0.7)';
+        const BLEND_MODE = 'soft-light';
+        
+        function resizeCanvas() {
+            visualizer.width = templateImage.offsetWidth;
+            visualizer.height = templateImage.offsetHeight;
+        }
+        
+        templateImage.onload = () => {
+            resizeCanvas();
+        };
+        
+        window.addEventListener('resize', resizeCanvas);
+        
+        window.onload = async () => {
+            try {
+                resizeCanvas();
+                
+                let stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: false
+                });
+
+                const audioContext = new AudioContext();
+                const analyser = audioContext.createAnalyser();
+                const mediaStreamSource =
+                    audioContext.createMediaStreamSource(stream);
+
+                mediaStreamSource.connect(analyser);
+                analyser.fftSize = 256;
+                drawVisualizer();
+
+                function drawVisualizer() {
+                    requestAnimationFrame(drawVisualizer)
+                    const bufferLength = analyser.frequencyBinCount
+                    const dataArray = new Uint8Array(bufferLength)
+
+                    analyser.getByteFrequencyData(dataArray)
+                    const width = visualizer.width
+                    const height = visualizer.height
+                    const maxBarHeight = height * MAX_HEIGHT_PERCENTAGE
+                    const barSpacing = BAR_WIDTH + BAR_GAP
+                    const totalBarsWidth = Math.floor(width / barSpacing)
+                    const centerX = width / 2
+                    const canvasContext = visualizer.getContext('2d')
+                    canvasContext.clearRect(0, 0, width, height)
+                    
+                    for (let i = 0; i < totalBarsWidth && i < bufferLength; i++) {
+                        const item = dataArray[i] || 0
+                        const barHeight = (item / 255) * maxBarHeight
+                        const y = height - barHeight
+                        
+                        const offsetFromCenter = Math.floor(i / 2) * barSpacing
+                        
+                        if (i % 2 === 0) {
+                            const x = centerX + offsetFromCenter
+                            if (x + BAR_WIDTH <= width) {
+                                canvasContext.globalCompositeOperation = BLEND_MODE
+                                canvasContext.fillStyle = BAR_COLOR
+                                canvasContext.beginPath()
+                                canvasContext.roundRect(x, y, BAR_WIDTH, barHeight, [2, 2, 0, 0])
+                                canvasContext.fill()
+                            }
+                        } else {
+                            const x = centerX - offsetFromCenter - BAR_WIDTH
+                            if (x >= 0) {
+                                canvasContext.globalCompositeOperation = BLEND_MODE
+                                canvasContext.fillStyle = BAR_COLOR
+                                canvasContext.beginPath()
+                                canvasContext.roundRect(x, y, BAR_WIDTH, barHeight, [2, 2, 0, 0])
+                                canvasContext.fill()
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>
