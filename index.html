@@ -195,6 +195,8 @@
         let audioContext = null;
         let analyser = null;
         let animationId = null;
+        let lastFrameTime = 0;
+        const targetFPS = 60;
 
         const elements = {
             templateImage: document.getElementById('template-image'),
@@ -332,7 +334,8 @@
             setTimeout(() => {
                 initializeSiriWave();
                 if (audioContext?.state === 'running') {
-                    siriWave.start();
+                    lastFrameTime = 0;
+                    frameRateIndependentAnimation();
                 }
             }, 100);
         }
@@ -380,25 +383,48 @@
                 analyser.fftSize = 256;
                 analyser.smoothingTimeConstant = 0.8;
 
-                siriWave.start();
-                updateWaveAmplitude();
+                lastFrameTime = 0;
+                frameRateIndependentAnimation();
             } catch (error) {
                 console.error('Error accessing microphone:', error);
-                siriWave.start();
+                lastFrameTime = 0;
+                frameRateIndependentAnimation();
             }
         }
 
-        function updateWaveAmplitude() {
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
+        function frameRateIndependentAnimation(currentTime = 0) {
+            if (lastFrameTime === 0) {
+                lastFrameTime = currentTime;
+                siriWave.start();
+            }
             
-            analyser.getByteFrequencyData(dataArray);
+            const deltaTime = currentTime - lastFrameTime;
             
-            const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength;
-            const normalizedAmplitude = Math.max(0.1, average / 255 * 3);
+            // Calculate current effective FPS
+            const currentFPS = deltaTime > 0 ? 1000 / deltaTime : 60;
             
-            siriWave.setAmplitude(normalizedAmplitude);
-            animationId = requestAnimationFrame(updateWaveAmplitude);
+            // Adjust speed to normalize animation speed across different frame rates
+            const speedMultiplier = targetFPS / currentFPS;
+            const normalizedSpeed = 0.2 * speedMultiplier;
+            
+            // Update amplitude and speed
+            if (analyser) {
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                
+                analyser.getByteFrequencyData(dataArray);
+                
+                const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength;
+                const normalizedAmplitude = Math.max(0.1, average / 255 * 3);
+                
+                siriWave.setAmplitude(normalizedAmplitude);
+            }
+            
+            // Set normalized speed to compensate for frame rate differences
+            siriWave.setSpeed(Math.max(0.05, Math.min(normalizedSpeed, 0.5))); // Clamp between reasonable bounds
+            
+            lastFrameTime = currentTime;
+            animationId = requestAnimationFrame(frameRateIndependentAnimation);
         }
 
         function cleanup() {
